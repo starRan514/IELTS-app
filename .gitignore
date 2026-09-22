@@ -1,5 +1,7 @@
-# 依赖
+# 依赖（纯静态站点部署，不需要 npm）
 node_modules/
+package.json
+package-lock.json
 
 # 环境与凭据
 .env
