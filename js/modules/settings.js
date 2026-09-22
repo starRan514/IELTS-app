@@ -1,5 +1,5 @@
 import { getSettings, updateSettings, getCurrentUser, isCloudReady, syncFromCloud } from '../store.js';
-import { englishVoices, supported as ttsSupported, speak } from '../tts.js';
+import { englishVoices, supported as ttsSupported, speak, configure } from '../tts.js';
 import { testKey, hasKey } from '../ai.js';
 import * as supabase from '../supabase.js';
 
@@ -119,6 +119,7 @@ export function render({ view, toast }) {
 
   view.querySelector('#test-tts').addEventListener('click', () => {
     updateSettings({ ttsVoiceURI: voiceSel.value, ttsRate: parseFloat(view.querySelector('#rate').value) });
+    configure({ voiceURI: voiceSel.value, rate: parseFloat(view.querySelector('#rate').value) });
     speak("Good learning environments reduce unnecessary switching and unclear goals.");
   });
 
