@@ -36,11 +36,21 @@ export function render({ view, toast }) {
         <label class="fld">Base URL
           <input type="text" id="base" value="${s.baseUrl}">
         </label>
-        <label class="fld">模型
-          <select id="model">
-            ${['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1', 'o4-mini'].map(m =>
-              `<option ${s.model === m ? 'selected' : ''}>${m}</option>`).join('')}
-          </select>
+        <label class="fld">模型（可手动输入，下拉是常用候选）
+          <input type="text" id="model" list="model-list" value="${s.model}" placeholder="如 deepseek-chat / gpt-4o-mini / glm-4-flash">
+          <datalist id="model-list">
+            <option value="gpt-4o-mini">
+            <option value="gpt-4o">
+            <option value="gpt-4.1-mini">
+            <option value="o4-mini">
+            <option value="deepseek-chat">
+            <option value="deepseek-reasoner">
+            <option value="glm-4-flash">
+            <option value="glm-4.5">
+            <option value="glm-4-plus">
+            <option value="moonshot-v1-8k">
+            <option value="moonshot-v1-32k">
+          </datalist>
         </label>
         <div class="btn-row">
           <button class="btn sm" id="save-ai">保存</button>
