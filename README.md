@@ -1,5 +1,13 @@
 # 雅思 28 周 PWA · 从零搭建指导
 
+<div align="center">
+
+🚀 **在线 Demo**：[ielts-app-9mc.pages.dev](https://ielts-app-9mc.pages.dev)  
+📦 **源码仓库**：[github.com/starRan514/IELTS-app](https://github.com/starRan514/IELTS-app)  
+🤖 **AI 后端**：DeepSeek · ☁️ **云同步**：Supabase · 🌐 **托管**：Cloudflare Pages
+
+</div>
+
 > 本文档记录如何从零搭建一个像 [ielts-app-9mc.pages.dev](https://ielts-app-9mc.pages.dev/) 这样的雅思学习 PWA：邮箱登录、跨设备云同步、AI 口语考官、TTS 听力朗读、SM-2 单词卡。零打包、零后端、零运维成本。
 
 ---
@@ -560,6 +568,141 @@ export const MATERIAL = {
   speaking:  [{ week, topicZh, part1: [], cueCard, part3: [], example, guide, upgrade }],
 };
 ```
+
+---
+
+## 12.5 用 LLM 生成自定义话题库 + agent 替换 data.js
+
+默认教材是通用学术话题（注意与记忆、睡眠、压力、社交媒体…）。如果你想换成与自己**专业 / 行业 / 兴趣**贴合的话题（医学生物、AI 伦理、环境政策、教育心理、商业管理…），完全可以让大语言模型（DeepSeek / ChatGPT / Claude）批量生成符合 `data.js` 结构的话题库，再交给 agent（即帮你搭项目的 AI 助手）一次性替换。
+
+### 12.5.1 流程总览
+
+```
+[你] 选定主题方向（如"AI 伦理与公共政策"）
+   ↓
+[你] 把 §12.5.2 的 prompt 模板复制到 DeepSeek/ChatGPT
+   ↓
+[LLM] 按模板输出结构化 JSON（4 模块 × N 周）
+   ↓
+[你] 把 LLM 输出的 JSON 整段贴给 agent
+   ↓
+[agent] 校验结构 → 替换 js/data.js → 重启本地服务 → 你打开看效果
+   ↓
+[你] 满意 → agent git commit + push → Cloudflare Pages 自动更新
+```
+
+### 12.5.2 LLM Prompt 模板（直接复制粘贴）
+
+把下面整段贴给 DeepSeek / ChatGPT / Claude，把 `{{TOPIC}}` 换成你的主题方向，把 `{{WEEKS}}` 换成要生成的周数（建议一次 4 周，避免单次输出截断）：
+
+```
+你是雅思学术教材编写专家。请围绕「{{TOPIC}}」这一主题方向，生成 {{WEEKS}} 周的雅思学习材料，严格按以下 JSON 结构输出（只输出 JSON，不要任何解释文字，不要 markdown 代码块包裹）：
+
+{
+  "reading": [
+    {
+      "week": 1,
+      "topicZh": "主题中文名",
+      "titleEn": "English Topic Title",
+      "difficulty": "基础|进阶|高阶",
+      "timeLimit": "8–10 分钟",
+      "passageTitle": "Passage Title",
+      "paragraphs": ["5段学术英语段落，每段80-120词，论证清晰：主张→机制→证据→边界→应用"],
+      "chunks": ["6个核心学术词块（英文短语，不单个词）"],
+      "q1": "一道思考题，要求考生指出文章主论证的机制和支持证据",
+      "q2": "一道思考题，要求考生指出结论的边界条件并修改结论",
+      "search": "延伸阅读检索词；优先 NIH/PMC/Our World in Data/Reuters"
+    }
+  ],
+  "listening": [
+    {
+      "week": 1,
+      "topicZh": "主题中文名",
+      "questions": ["5道选择题，每题4选项A-D，题干+选项分行"],
+      "script": ["听力独白脚本，Section 4 风格，200-250词，分句以便逐句精听"],
+      "answers": ["5道题答案，形如 1.C 2.A 3.B 4.D 5.A"],
+      "chunks": ["6个听力场景词块"]
+    }
+  ],
+  "writing": [
+    {
+      "week": 1,
+      "topicZh": "主题中文名",
+      "prompt": "Task2 议论文题目（英文，含明确立场要求）",
+      "guide": "论证引导（中文，2-3句，指出可用的角度/反例/边界）",
+      "sample": {
+        "body": "示例主体段（英文，150词左右，展示论证推进：主张→证据→机制→让步→回应）",
+        "upgrade": "升级建议（中文，1-2句，指出可替换的高级表达或论证深化方向）"
+      }
+    }
+  ],
+  "speaking": [
+    {
+      "week": 1,
+      "topicZh": "主题中文名",
+      "part1": ["3-4个 Part1 热身问题（英文）"],
+      "cueCard": "Part2 卡片题（英文，含 Describe a... + 3-4 个 bullet 提示点）",
+      "part3": ["3-4个 Part3 深度追问（英文，要求比较/评估/推测）"],
+      "example": "Part3 示范回答（英文，120词，展示展开方式：观点→例子→让步→深化）",
+      "guide": "答题策略提示（中文，1-2句）",
+      "upgrade": "升级建议（中文，1句，指出可替换表达）"
+    }
+  ]
+}
+
+要求：
+1. 主题方向「{{TOPIC}}」要贯穿 4 个模块，每周一个子主题（如 AI 伦理下分：算法偏见、隐私权、就业冲击、监管政策）。
+2. 阅读段落必须论证严密、学术英语地道，不要套话连接词堆砌。
+3. 听力脚本要 Section 4 独白风格（讲座/报告），不是对话。
+4. 写作题目要典型 IELTS Task2 风格（To what extent do you agree / Discuss both views 等）。
+5. 口语 Part2 卡片必须含 Describe a... + bullet 提示点。
+6. 输出 {{WEEKS}} 周完整内容（week 字段从 1 到 {{WEEKS}} 递增）。
+7. 只输出 JSON，不要任何解释。
+```
+
+### 12.5.3 把 LLM 输出交给 agent 替换
+
+把 LLM 生成的整段 JSON 复制，然后给 agent（比如你对我说）：
+
+> 把下面这段 LLM 生成的话题库替换到 `js/data.js`，保持 `export const MATERIALS = ...` 的 ESM 导出格式，保留顶部注释但更新 `generatedAt` 时间戳和 `来源` 说明为「LLM 生成 · 主题：{{你的主题}}」。替换后启动本地服务让我预览。
+>
+> ```json
+> { 粘贴 LLM 输出的整段 JSON }
+> ```
+
+agent 会做这些事：
+1. 解析 JSON 校验结构（4 个数组、必填字段齐全、week 连续无重复）
+2. 用 `tools/build-data.mjs` 同款的清洗逻辑跑一遍（去重连接词、normalize 主题占位符等）
+3. 写入 `js/data.js`，保留 ESM 导出
+4. 跑 `node tools/serve.mjs 5180` 启动本地服务，让你打开 `http://localhost:5180/` 预览
+5. 你确认满意后 → `git add js/data.js` + commit + push 到 GitHub → Cloudflare Pages 自动重新部署
+
+### 12.5.4 分批生成与拼接
+
+28 周内容量大，**强烈建议分 7 批 × 4 周生成**（DeepSeek 单次输出约 4000 token，一次 4 周刚好不截断）：
+
+```
+第 1 批：week 1-4   主题：算法偏见 / 数据隐私 / 自动化就业 / 监管政策
+第 2 批：week 5-8   主题：内容审核 / 深度伪造 / AI 创作权 / 算法透明度
+...
+```
+
+每批生成后把 JSON 贴给 agent，agent 按 week 字段合并到同一个 `data.js`，不会覆盖已有周次。全部 28 周凑齐后一次性 commit + push。
+
+### 12.5.5 验证清单
+
+替换完 `data.js` 后，本地打开 `http://localhost:5180/` 检查：
+
+| 检查项 | 期望 |
+|---|---|
+| 首页 28 周网格 | 每周中英文主题正确显示，无空白 |
+| 阅读 W1 | 文章 5 段都能渲染，核心词块 6 个入卡按钮可用 |
+| 听力 W1 | TTS 能朗读独白脚本，5 道题 + 答案正常 |
+| 写作 W1 | Task2 题目 + 引导 + 示例分页正常 |
+| 口语 W1 | Part1/2/3 题目齐全，Part2 卡片含 bullet |
+| 单词页「导入全部词块」 | 28 周 × 6 词块全部入卡 |
+
+任何一项异常，把异常截图/描述给 agent，agent 直接改 `data.js` 或清洗脚本。
 
 ---
 
