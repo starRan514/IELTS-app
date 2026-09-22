@@ -1,0 +1,7 @@
+# 部署到 Cloudflare Pages 时排除的大文件/工具
+tools/cloudflared.exe
+tools/shots/
+node_modules/
+.git/
+.gitignore
+.wranglerignore

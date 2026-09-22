@@ -30,3 +30,6 @@ tools/.cache/
 
 # 本地测试输出（保留脚本本身）
 tools/test-output/
+
+# 大型二进制工具（不推到仓库，不部署）
+tools/cloudflared.exe
